@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPEDAS DUWIT - Dashboard Kepala Puskesmas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen p-6 antialiased flex flex-col items-center justify-start space-y-6">
+
+    <!-- Sistem Proteksi Halaman -->
+    <script>
+        if (localStorage.getItem('sipedas_peran') !== 'kapus') {
+            alert('Akses ditolak! Halaman ini khusus Kepala Puskesmas.');
+            window.location.href = '/login.html';
+        }
+    </script>
+
+    <div class="w-full max-w-2xl space-y-6">
+        
+        <!-- Header Utama Dashboard -->
+        <div class="bg-emerald-800 text-white p-6 rounded-3xl text-center shadow-xl">
+            <h2 class="text-xl font-black tracking-wide uppercase">DASHBOARD KEPALA PUSKESMAS</h2>
+            <p class="text-xs opacity-85 mt-1">Sistem Otentikasi & Lembar Disposisi Digital Puskesmas Duren Sawit</p>
+        </div>
+
+        <!-- PANEL 1: DAFTAR SURAT YANG HARUS DITINDAK (TERBARU DI ATAS) -->
+        <div class="bg-white p-6 rounded-3xl border border-gray-150 shadow-xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                <div>
+                    <h3 class="text-sm font-black text-gray-800 uppercase tracking-wide">Surat Masuk Menunggu Tindakan</h3>
+                    <p class="text-xs text-gray-400">Silakan klik/pilih salah satu surat di bawah untuk mendisposisi</p>
+                </div>
+                <button onclick="muatAntreanSurat()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-300 transition">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <!-- List Item Surat (Render Dinamis) -->
+            <div id="listSuratAntrean" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <p class="text-xs text-gray-400 italic text-center py-4">Sedang mengambil daftar antrean surat...</p>
+            </div>
+        </div>
+
+        <!-- PANEL 2: LEMBAR EKSEKUSI DISPOSISI (MUNCUL JIKA SURAT DIKLIK) -->
+        <div id="panelFormDisposisi" class="hidden bg-white p-6 rounded-3xl border border-gray-150 shadow-xl space-y-5 transition-all duration-300">
+            <div class="border-b border-gray-100 pb-3 bg-emerald-50 -mx-6 -mt-6 p-4 rounded-t-3xl border-b border-emerald-150">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-600 text-white">
+                    Berkas Terpilih untuk Ditindak
+                </span>
+                <h4 id="txtSuratTerpilih" class="text-sm font-black text-gray-800 mt-2">Nama Surat</h4>
+            </div>
+            
+            <form action="/api/simpan-disposisi" method="POST" class="space-y-4">
+                <!-- Data Hidden untuk Pengiriman Log Server -->
+                <input type="hidden" name="jabatan_pimpinan" value="Kepala Puskesmas">
+                <input type="hidden" name="status_plh" value="tidak">
+                <input type="hidden" id="input_id_surat" name="id_surat" required>
+
+                <!-- 1. PILIH PENERIMA DISPOSISI (BISA DIKETIK / AUTOCOMPLETE) -->
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1.5">Diteruskan Kepada (Pegawai/Unit)</label>
+                    <input type="text" id="disposisi_ke" name="disposisi_ke" list="dataPegawaiList" required 
+                           placeholder="Ketik nama atau jabatan pegawai..." 
+                           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:border-emerald-600 font-medium">
+                    <datalist id="dataPegawaiList">
+                        <!-- Data option pegawai akan dimuat dinamis di sini -->
+                    </datalist>
+                </div>
+
+                <!-- 2. CATATAN / INSTRUKSI PIMPINAN -->
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1.5">Catatan / Instruksi Pimpinan</label>
+                    <textarea name="catatan_disposisi" required placeholder="Contoh: Koordinasikan dengan tim terkait, Hadiri, atau Tindaklanjuti segera!" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600"></textarea>
+                </div>
+
+                <!-- 3. KUNCI TANDA TANGAN DIGITAL -->
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1.5">Kunci Tanda Tangan Digital (PIN/Token)</label>
+                    <input type="password" name="ttd_pimpinan" required placeholder="Masukkan PIN Otentikasi Kepala Puskesmas" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600">
+                </div>
+
+                <!-- 4. TOMBOL SUBMIT -->
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="batalkanPilihan()" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-gray-650 font-bold py-3 rounded-xl text-sm transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="w-2/3 bg-emerald-700 hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-sm shadow-md transition tracking-wide">
+                        Kunci & Sahkan Disposisi
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tombol Keluar Aplikasi -->
+        <div class="text-center">
+            <button onclick="localStorage.clear(); window.location.href='/login.html';" class="bg-white hover:bg-red-50 text-red-600 font-bold text-xs px-6 py-2 rounded-xl border border-red-200 shadow-sm transition">
+                Keluar Sesi (Logout)
+            </button>
+        </div>
+    </div>
+
+    <!-- Script Kontrol Alur Kerja Dashboard -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            muatAntreanSurat();
+            muatMasterPegawai();
+        });
+
+        // Ambil Data Antrean Surat Masuk yang Belum Diproses
+        function muatAntreanSurat() {
+            const container = document.getElementById('listSuratAntrean');
+            container.innerHTML = '<p class="text-xs text-gray-400 italic text-center py-4">Memperbarui antrean berkas...</p>';
+
+            fetch('/api/surat-belum-disposisi')
+                .then(res => res.json())
+                .then(data => {
+                    container.innerHTML = '';
+
+                    if(data.length === 0) {
+                        container.innerHTML = `
+                            <div class="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-gray-200">
+                                <p class="text-xs text-emerald-700 font-bold">🎉 Bersih! Tidak ada berkas surat yang menumpuk.</p>
+                            </div>`;
+                        document.getElementById('panelFormDisposisi').classList.add('hidden');
+                        return;
+                    }
+
+                    // Membalik urutan array (Reverse) agar data ID terbaru/terakhir masuk muncul paling atas
+                    data.reverse().forEach(s => {
+                        container.innerHTML += `
+                            <div onclick="pilihSuratKerja(${s.id}, '${s.perihal.replace(/'/g, "\\'")}')" 
+                                 class="group flex justify-between items-center bg-slate-50 hover:bg-emerald-50 p-3 rounded-xl border border-gray-200 hover:border-emerald-300 cursor-pointer transition">
+                                <div class="space-y-0.5">
+                                    <span class="text-[10px] font-mono font-bold text-gray-400 group-hover:text-emerald-750">ANTRI-${s.id}</span>
+                                    <h5 class="text-xs font-bold text-gray-800 group-hover:text-emerald-900">${s.perihal}</h5>
+                                </div>
+                                <span class="text-[10px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-gray-200 group-hover:border-emerald-200 shadow-sm">
+                                    Proses Berkas →
+                                </span>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(err => {
+                    container.innerHTML = '<p class="text-xs text-red-500 italic text-center py-4">Gagal mengambil data dari server.</p>';
+                });
+        }
+
+        // Ambil Data Pegawai untuk Target Disposisi (Sistem Autocomplete Datalist)
+        function muatMasterPegawai() {
+            fetch('/api/pegawai')
+                .then(res => res.json())
+                .then(data => {
+                    const datalistPegawai = document.getElementById('dataPegawaiList');
+                    datalistPegawai.innerHTML = ''; // Bersihkan data lama
+                    
+                    data.forEach(p => {
+                        let opt = document.createElement('option');
+                        // Value ini yang akan otomatis masuk ke database saat form di-submit
+                        opt.value = `${p.nama_pegawai} (${p.jabatan})`;
+                        datalistPegawai.appendChild(opt);
+                    });
+                });
+        }
+
+        // Aksi Trigger Saat Item List Diklik
+        function pilihSuratKerja(id, perihal) {
+            document.getElementById('panelFormDisposisi').classList.remove('hidden');
+            document.getElementById('input_id_surat').value = id;
+            document.getElementById('txtSuratTerpilih').innerText = `ANTRI-${id} : ${perihal}`;
+            
+            // Scroll otomatis fokus ke form pengerjaan
+            document.getElementById('panelFormDisposisi').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Batalkan Proses Pengerjaan Disposisi
+        function batalkanPilihan() {
+            document.getElementById('panelFormDisposisi').classList.add('hidden');
+            document.getElementById('input_id_surat').value = '';
+            document.getElementById('disposisi_ke').value = ''; // Reset input pencarian
+        }
+    </script>
+</body>
+</html>

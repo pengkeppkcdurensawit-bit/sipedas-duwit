@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPEDAS DUWIT - Manajemen Pegawai</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 font-sans p-6">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="bg-slate-800 text-white p-6 rounded-2xl shadow-sm flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">MANAJEMEN MASTER DATA PEGAWAI</h1>
+                <p class="text-xs text-slate-400 mt-1">Sinkronisasi Otomatis Dropdown Pemohon Surat Keluar & Tujuan Disposisi Pimpinan</p>
+            </div>
+            <button onclick="localStorage.clear(); window.location.href='/login.html';" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">
+                Keluar Aplikasi
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Form Tambah Pegawai -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4 h-fit">
+                <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase tracking-wide">Tambah Pegawai Baru</h3>
+                <form id="formPegawai" class="space-y-3">
+                    <div>
+                        <label class="block text-gray-600 text-xs font-semibold mb-1">Nama Lengkap & Gelar</label>
+                        <input type="text" id="nama_pegawai" required placeholder="Contoh: drg. Amanda Putri" class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-xs font-semibold mb-1">Jabatan / Unit Kerja</label>
+                        <input type="text" id="jabatan" required placeholder="Contoh: Dokter Gigi / Poli Anak" class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-sm transition">
+                        Simpan ke Database
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tabel Daftar Pegawai Aktif -->
+            <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                <h3 class="font-bold text-gray-800 border-b pb-2 text-sm uppercase tracking-wide">Pegawai Terdaftar Saat Ini</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-gray-200 text-gray-600 font-bold">
+                                <th class="p-3">Nama Pegawai</th>
+                                <th class="p-3">Jabatan / Unit Kerja</th>
+                                <th class="p-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelPegawai" class="divide-y divide-gray-100 text-gray-700">
+                            <!-- Data dimuat dinamis via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Ambil Data Saat Halaman Dibuka
+document.addEventListener("DOMContentLoaded", muatPegawai);
+
+function muatPegawai() {
+    fetch('/api/pegawai')
+        .then(res => res.json())
+        .then(data => {
+            const t = document.getElementById('tabelPegawai');
+            t.innerHTML = '';
+            
+            if(data.length === 0) {
+                t.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">Belum ada data pegawai. Silakan tambah data di menu kiri.</td></tr>`;
+                return;
+            }
+
+            data.forEach(p => {
+                t.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-slate-800">${p.nama_pegawai}</td>
+                        <td class="p-3 text-gray-500">${p.jabatan}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="hapusPegawai(${p.id})" class="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        })
+        .catch(err => console.error("Gagal memuat data pegawai:", err));
+}
+
+// Proses Tambah Pegawai (Sudah Diperbaiki & Diperkuat)
+document.getElementById('formPegawai').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const nama = document.getElementById('nama_pegawai').value;
+    const jab = document.getElementById('jabatan').value;
+
+    // Menggunakan URL-Encoded agar kompatibel penuh dengan express.urlencoded di server.js
+    fetch('/api/pegawai/tambah', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama_pegawai: nama, jabatan: jab })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Respons server bermasalah');
+        return res.json();
+    })
+    .then(res => {
+        if(res.sukses) {
+            alert('Pegawai Berhasil Ditambahkan!');
+            document.getElementById('formPegawai').reset();
+            muatPegawai(); // Refresh tabel otomatis
+        } else {
+            alert('Gagal menyimpan: ' + (res.pesan || 'Terjadi kesalahan sistem.'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Eror Kontrol: Pastikan server.js Anda sudah di-restart setelah penambahan kode tabel pegawai baru!');
+    });
+});
+
+// Proses Hapus Pegawai
+function hapusPegawai(id) {
+    if(confirm('Apakah Anda yakin ingin menghapus pegawai ini dari master data referensi?')) {
+        fetch(`/api/pegawai/hapus/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(res => {
+                if(res.sukses) {
+                    muatPegawai();
+                }
+            })
+            .catch(err => console.error("Gagal menghapus:", err));
+    }
+}

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPEDAS DUWIT - Dashboard Ka Subbag TU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 font-sans p-6 antialiased min-h-screen">
+
+    <!-- Sistem Proteksi Halaman -->
+    <script>
+        if (localStorage.getItem('sipedas_peran') !== 'kasubbag') {
+            alert('Akses ditolak! Halaman ini khusus Ka Subbag TU.');
+            window.location.href = '/login.html';
+        }
+    </script>
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- HEADER UTAMA -->
+        <div class="bg-slate-800 text-white p-6 rounded-3xl shadow-xl border border-slate-700 text-center">
+            <h1 class="text-xl font-black tracking-wide uppercase">DASHBOARD ANTREAN KA SUBBAG TU</h1>
+            <p class="text-xs opacity-70 mt-1">SIPEDAS DUWIT • Puskesmas Duren Sawit</p>
+        </div>
+
+        <!-- KEADAAN KOSONG (MUNCUL JIKA TIDAK ADA TINDAKAN) -->
+        <div id="boxSemuaSelesai" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 p-8 rounded-3xl text-center space-y-2 shadow-sm">
+            <div class="text-3xl">🎉</div>
+            <h3 class="font-bold text-sm uppercase">Semua Tugas Selesai!</h3>
+            <p class="text-xs opacity-80">Tidak ada draf surat yang memerlukan tindakan Anda saat ini.</p>
+        </div>
+
+        <!-- AREA UTAMA DAFTAR ANTRIAN SURAT (TERBARU DI ATAS) -->
+        <div id="areaAntrean" class="space-y-6">
+            
+            <div id="blokSuratKeluar" class="hidden bg-white p-5 rounded-3xl border border-gray-200 shadow-md space-y-3">
+                <div class="border-b border-gray-100 pb-2">
+                    <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Daftar Surat Belum Ditindak</span>
+                    <h3 class="text-xs font-bold text-gray-500 mt-1">Silakan pilih/klik surat di bawah ini untuk memberikan tindakan</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-600">
+                        <thead>
+                            <tr class="bg-slate-100 text-gray-700 uppercase text-[10px] tracking-wider">
+                                <th class="p-3 rounded-l-xl">No. Antrean</th>
+                                <th class="p-3">Perihal Dokumen</th>
+                                <th class="p-3">Unit Pengaju</th>
+                                <th class="p-3 text-right rounded-r-xl">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelSuratKeluar">
+                            <!-- Data Dimuat via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- MODAL TINDAKAN SIMPEL (SLIDE UP / POPUP) -->
+        <div id="modalTindakan" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="bg-white max-w-md w-full p-6 rounded-3xl shadow-2xl border border-gray-100 space-y-4">
+                
+                <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+                    <div>
+                        <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Opsi Tindakan</span>
+                        <h3 class="text-sm font-black text-gray-800 mt-1 uppercase">Pilih Tindakan Dokumen</h3>
+                    </div>
+                    <button onclick="tutupModal()" class="text-gray-400 hover:text-gray-600 font-bold text-sm px-2">✕</button>
+                </div>
+
+                <!-- Informasi Ringkas Dokumen Terpilih -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-gray-200 text-[11px] space-y-1 text-gray-700">
+                    <input type="hidden" id="idSuratAksi">
+                    <p><strong>Perihal:</strong> <span id="mdPerihal">-</span></p>
+                    <p><strong>Tujuan:</strong> <span id="mdTujuan">-</span></p>
+                    <p><strong>Unit Pengaju:</strong> <span id="mdUnit">-</span></p>
+                </div>
+
+                <!-- GRID 3 PILIHAN TOMBOL UTAMA -->
+                <div class="grid grid-cols-1 gap-2 pt-2">
+                    <!-- 1. PARAF DOKUMEN -->
+                    <button onclick="eksekusiTindakan('paraf')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow transition text-center">
+                        ✍️ Paraf Dokumen (Kirim ke Kepala Puskesmas)
+                    </button>
+
+                    <!-- 2. TTD DOKUMEN -->
+                    <button onclick="eksekusiTindakan('ttd')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition text-center">
+                        ✅ TTD Dokumen (Selesai ke TU Keluar)
+                    </button>
+
+                    <!-- 3. KEMBALIKAN DOKUMEN -->
+                    <button onclick="tampilkanFormKembali()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition text-center">
+                        ❌ Kembalikan Dokumen (Butuh Revisi)
+                    </button>
+                </div>
+
+                <!-- FORM INPUT TAMBAHAN JIKA DIKEMBALIKAN -->
+                <div id="boxAlasanKembali" class="hidden border-t border-gray-100 pt-3 space-y-2">
+                    <label class="block text-gray-600 text-[11px] font-bold">Alasan Dokumen Dikembalikan:</label>
+                    <textarea id="catatanKembali" rows="2" placeholder="Contoh: Redaksi surat salah, mohon perbaiki lampiran..." class="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs focus:outline-none focus:border-rose-600"></textarea>
+                    <button onclick="eksekusiTindakan('kembali')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-xl text-[11px] transition">
+                        Kirim Pengembalian Resmi
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Tombol Logout -->
+        <div class="text-center pt-4">
+            <button onclick="localStorage.clear(); window.location.href='/login.html';" class="bg-white hover:bg-red-50 text-red-600 font-bold text-xs px-6 py-2 rounded-xl border border-red-200 shadow-sm transition">
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIKA ANTRIAN & TOMBOL AKSI -->
+    <script>
+        let listDrafKeluar = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            segarkanAntrean();
+        });
+
+        function segarkanAntrean() {
+            fetch('/api/surat-keluar-all')
+                .then(res => {
+                    if (!res.ok) throw new Error("Gagal mengambil data dari server");
+                    return res.json();
+                })
+                .then(data => {
+                    // Filter draf khusus untuk Ka Subbag TU & Urutkan Terbalik (ID terbesar/terbaru di atas)
+                    listDrafKeluar = data.filter(s => 
+                        s.status_terakhir === 'Menunggu Verifikasi Kasubbag' || 
+                        s.status_terakhir === 'Menunggu Verifikasi Ka Subbag TU'
+                    ).sort((a,b) => b.id - a.id);
+
+                    evaluasiTampilanDashboard();
+                })
+                .catch(err => {
+                    console.error(err);
+                    // Fallback jika API bermasalah agar tampilan tidak blank
+                    evaluasiTampilanDashboard();
+                });
+        }
+
+        function evaluasiTampilanDashboard() {
+            const bKeluar = document.getElementById('blokSuratKeluar');
+            const bKosong = document.getElementById('boxSemuaSelesai');
+            const tbody = document.getElementById('tabelSuratKeluar');
+            
+            tbody.innerHTML = '';
+
+            if (listDrafKeluar.length > 0) {
+                bKeluar.classList.remove('hidden');
+                bKosong.classList.add('hidden');
+
+                listDrafKeluar.forEach(s => {
+                    tbody.innerHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-slate-50 transition">
+                            <td class="p-3 font-mono text-indigo-700 font-bold">${s.nomor_antrean || ('ANTRI-' + s.id)}</td>
+                            <td class="p-3 font-semibold text-gray-800">${s.perihal}</td>
+                            <td class="p-3 text-gray-500 font-medium">${s.pemohon_unit}</td>
+                            <td class="p-3 text-right">
+                                <button onclick="bukaAksiDokumen(${s.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-xl text-[11px] transition shadow-sm">Pilih Surat</button>
+                            </td>
+                        </tr>`;
+                });
+            } else {
+                bKeluar.classList.add('hidden');
+                bKosong.classList.remove('hidden');
+            }
+        }
+
+        function bukaAksiDokumen(id) {
+            const s = listDrafKeluar.find(item => item.id == id);
+            if(!s) return;
+
+            document.getElementById('modalTindakan').classList.remove('hidden');
+            document.getElementById('boxAlasanKembali').classList.add('hidden'); // Sembunyikan form alasan dulu
+            
+            document.getElementById('idSuratAksi').value = s.id;
+            document.getElementById('mdPerihal').innerText = s.perihal;
+            document.getElementById('mdTujuan').innerText = s.tujuan || 'Internal';
+            document.getElementById('mdUnit').innerText = s.pemohon_unit;
+        }
+
+        function tampilkanFormKembali() {
+            document.getElementById('boxAlasanKembali').classList.remove('hidden');
+            document.getElementById('catatanKembali').focus();
+        }
+
+        function tutupModal() {
+            document.getElementById('modalTindakan').classList.add('hidden');
+            document.getElementById('catatanKembali').value = '';
+        }
+
+        function eksekusiTindakan(tipe) {
+            const idSurat = document.getElementById('idSuratAksi').value;
+            let statusBaru = '';
+            let catatan = '';
+
+            if (tipe === 'paraf') {
+                statusBaru = 'Sudah Diparaf Ka Subbag TU'; // Otomatis lari ke Dashboard Kapus
+            } else if (tipe === 'ttd') {
+                statusBaru = 'Selesai Ditandatangani Kepala Puskesmas'; // Bypass langsung selesai untuk dikerjakan TU Keluar
+            } else if (tipe === 'kembali') {
+                statusBaru = 'Ditolak Ka Subbag TU'; // Dikembalikan ke pengaju asal
+                catatan = document.getElementById('catatanKembali').value;
+                if (!catatan.trim()) {
+                    alert('Mohon isi alasan pengembalian terlebih dahulu!');
+                    return;
+                }
+            }
+
+            // Kirim data ke backend API Anda
+            fetch('/api/update-status-surat-keluar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: idSurat,
+                    status_terakhir: statusBaru,
+                    catatan_kasubbag: catatan // Mengirimkan alasan jika dikembalikan
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('Dokumen berhasil diproses dengan tindakan: ' + tipe.toUpperCase());
+                tutupModal();
+                segarkanAntrean(); // Segarkan list di dashboard agar surat yang sudah ditindak langsung hilang
+            })
+            .catch(err => {
+                alert('Gagal berkomunikasi dengan server backend.');
+                console.error(err);
+            });
+        }
+    </script>
+</body>
+</html>

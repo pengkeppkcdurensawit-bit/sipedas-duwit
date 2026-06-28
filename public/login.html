@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPEDAS DUWIT - Masuk Sistem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 font-sans flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-md border border-gray-150 space-y-5">
+        
+        <!-- Logo & Judul yang Baru -->
+        <div class="text-center space-y-1">
+            <h2 class="text-2xl font-black text-emerald-700 tracking-tight">SIPEDAS DUWIT</h2>
+            <p class="text-xs text-gray-600 uppercase font-bold tracking-wide leading-relaxed">
+                Sistem Pelacak Dokumen dan Surat<br>
+                <span class="text-emerald-700 font-black">PUSKESMAS DUREN SAWIT</span>
+            </p>
+        </div>
+
+        <!-- Form Login -->
+        <form id="formMasuk" class="space-y-4">
+            <div>
+                <label class="block text-gray-600 text-xs font-bold mb-1">Pilih Hak Akses / Jabatan</label>
+                <select id="username" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 font-medium text-gray-800">
+                    <option value="tu_masuk">Petugas Surat Masuk</option>
+                    <option value="tu_keluar">Petugas Surat Keluar</option>
+                    <option value="kapus">Kepala Puskesmas</option>
+                    <option value="kasubbag">Ka Subbag TU</option>
+                    <option value="admin">Super User Admin</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-gray-600 text-xs font-bold mb-1">Kata Sandi (Password)</label>
+                <input type="password" id="password" required placeholder="••••••••" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm">
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm transition">
+                Masuk ke Dashboard
+            </button>
+        </form>
+        
+        <div class="text-center">
+            <a href="/tracking.html" class="text-xs text-emerald-600 hover:underline font-medium">← Kembali ke Halaman Pelacakan Umum</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('formMasuk').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.sukses) {
+                    // Simpan tanda pengenal di HP/Browser agar sistem tahu user sudah login
+                    localStorage.setItem('sipedas_peran', data.peran);
+                    localStorage.setItem('sipedas_nama', data.nama);
+                    
+                    // Lempar ke halaman internal masing-masing sesuai respons server
+                    window.location.href = data.tujuan;
+                } else {
+                    alert(data.pesan);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

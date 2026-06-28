@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPEDAS DUWIT - Input Surat Masuk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans p-4 antialiased">
+
+    <div class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-extrabold text-green-700 tracking-tight">SIPEDAS DUWIT</h2>
+            <p class="text-xs text-gray-500 font-medium mt-1">Sistem Pelacak Dokumen & Surat PUSKESMAS Duren Sawit</p>
+        </div>
+
+        <form action="/simpan-surat-masuk" method="POST" id="formSurat" class="space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-1">Asal Surat</label>
+                <input type="text" name="asal_surat" placeholder="Contoh: Dinas Kesehatan / Internal" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-1">Perihal</label>
+                <input type="text" name="perihal" placeholder="Inti atau judul surat" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Bentuk Surat</label>
+                    <select name="bentuk_surat" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm bg-white">
+                        <option value="Fisik">Fisik</option>
+                        <option value="Digital">Digital</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Lampiran</label>
+                    <input type="text" name="lampiran" placeholder="Contoh: 1 Berkas / -" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-1">Tanggal Masuk Surat</label>
+                <input type="date" name="tanggal_masuk" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-1">Keterangan</label>
+                <textarea name="keterangan" rows="2" placeholder="Catatan tambahan..." class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"></textarea>
+            </div>
+
+            <!-- AREA TANDA TANGAN DIGITAL -->
+            <div class="border border-gray-200 p-3 rounded-xl bg-gray-50">
+                <label class="block text-gray-700 text-sm font-semibold mb-2 text-center">Tanda Tangan Bukti Terima TU</label>
+                <div class="bg-white rounded-lg border border-gray-300 overflow-hidden">
+                    <canvas id="signature-pad" class="w-full h-36 touch-none"></canvas>
+                </div>
+                <div class="flex justify-end mt-2">
+                    <button type="button" id="clear-btn" class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium hover:bg-gray-300">Ulangi Coretan</button>
+                </div>
+                <input type="hidden" name="ttd_tu" id="ttd_tu">
+            </div>
+
+            <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-700 shadow-sm transition duration-150 text-sm">
+                Submit & Kunci Data Surat
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('signature-pad');
+        
+        // Memastikan ukuran canvas pas di layar HP saat di-render
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+        
+        window.onresize = resizeCanvas;
+        resizeCanvas();
+
+        const signaturePad = new SignaturePad(canvas);
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            signaturePad.clear();
+        });
+
+        document.getElementById('formSurat').addEventListener('submit', function(e) {
+            if (signaturePad.isEmpty()) {
+                alert("Wajib di-tanda tangan langsung di layar sebagai bukti sah serah terima surat!");
+                e.preventDefault();
+            } else {
+                document.getElementById('ttd_tu').value = signaturePad.toDataURL();
+            }
+        });
+    </script>
+</body>
+</html>
