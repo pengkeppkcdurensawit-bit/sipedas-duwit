@@ -73,5 +73,21 @@ app.get('/api/pegawai', async (req, res) => {
   }
 });
 
+// Tambahkan ini di bagian paling bawah server.js (sebelum module.exports = app)
+const path = require('path');
+
+// Menangkap semua halaman HTML agar disajikan dengan benar oleh Express di Vercel
+app.get('/:page.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', `${req.params.page}.html`));
+});
+
+// Halaman utama otomatis mengarah ke login atau kasubbag
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'kasubbag.html'));
+});
+
+// Vercel memerlukan 'module.exports'
+module.exports = app;
+
 // Vercel memerlukan 'module.exports'
 module.exports = app;
