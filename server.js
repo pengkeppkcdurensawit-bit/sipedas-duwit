@@ -5,9 +5,9 @@ const { Pool } = require('pg');
 const path = require('path');
 const app = express();
 
-// Middleware wajib untuk membaca JSON dan berkas statis
+// Middleware wajib untuk membaca JSON dan berkas statis aman di Vercel
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // ===================================================
 // KONEKSI DATABASE (SUPABASE VIA TRANSACTION POOLER)
@@ -37,7 +37,6 @@ app.post('/api/login', async (req, res) => {
       if (result.rows.length > 0) {
         const pegawai = result.rows[0];
         
-        // Mengirimkan struktur data 'user' lengkap agar dibaca sempurna oleh login.html & mencegah "Akses Ditolak"
         return res.json({
           success: true,
           role: pegawai.jabatan,
@@ -65,7 +64,6 @@ app.post('/api/login', async (req, res) => {
 // INTEGRASI API DATA SURAT
 // ===================================================
 
-// 1. AMBIL SEMUA SURAT KELUAR
 app.get('/api/surat-keluar-all', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM surat_keluar ORDER BY id DESC');
@@ -75,7 +73,6 @@ app.get('/api/surat-keluar-all', async (req, res) => {
   }
 });
 
-// 2. AMBIL SURAT MASUK BELUM DIDISPOSISI
 app.get('/api/surat-belum-disposisi', async (req, res) => {
   try {
     const result = await db.query("SELECT * FROM surat_masuk WHERE status = 'Menunggu Disposisi' ORDER BY id DESC");
@@ -85,7 +82,6 @@ app.get('/api/surat-belum-disposisi', async (req, res) => {
   }
 });
 
-// 3. UPDATE STATUS / TINDAKAN SURAT KELUAR
 app.post('/api/update-status-surat-keluar', async (req, res) => {
   const { id, status_terakhir, catatan_kasubbag, nomor_surat_resmi } = req.body;
   try {
@@ -101,15 +97,17 @@ app.post('/api/update-status-surat-keluar', async (req, res) => {
   }
 });
 
-// Fallback untuk routing halaman utama
+// Fallback routing menggunakan process.cwd() agar path file terbaca di Vercel
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  res.sendFile(path.join(process.cwd(), 'public', 'login.html'));
 });
 
-// Menjalankan Server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Menjalankan Server secara kondisional (Hanya aktif jika dijalankan di komputer lokal)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
