@@ -11,6 +11,29 @@ const db = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+// ==========================================
+// RUTE AUTHENTICATION LOGIN (Tambahkan Ini!)
+// ==========================================
+app.post('/api/login', async (req, res) => {
+  const { jabatan, password } = req.body;
+
+  // Sesuai dengan password standar puskesmas Anda
+  if (password === 'pusk2024') { 
+    try {
+      const result = await db.query('SELECT * FROM pegawai WHERE jabatan = $1', [jabatan]);
+      if (result.rows.length > 0) {
+        return res.json({ success: true, jabatan: result.rows[0].jabatan });
+      } else {
+        return res.status(404).json({ error: 'Jabatan tidak terdaftar di database' });
+      }
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  } else {
+    return res.status(401).json({ error: 'Kata Sandi Salah!' });
+  }
+});
+
 // 1. AMBIL SEMUA SURAT KELUAR (Untuk Dashboard)
 app.get('/api/surat-keluar-all', async (req, res) => {
   try {
