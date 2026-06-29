@@ -2,12 +2,10 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const express = require('express');
 const { Pool } = require('pg');
-const path = require('path');
 const app = express();
 
-// Middleware wajib untuk membaca JSON dan berkas statis aman di Vercel
+// Middleware untuk membaca request berbasis JSON
 app.use(express.json());
-app.use(express.static(path.join(process.cwd(), 'public')));
 
 // ===================================================
 // KONEKSI DATABASE (SUPABASE VIA TRANSACTION POOLER)
@@ -21,7 +19,7 @@ const db = new Pool({
 });
 
 // ===================================================
-// RUTE PROSES LOGIN (SINKRON DENGAN LOCALSTORAGE FRONTEND)
+// RUTE PROSES LOGIN (MURNI DATA API)
 // ===================================================
 app.post('/api/login', async (req, res) => {
   const namaJabatan = req.body.username || req.body.jabatan;
@@ -63,7 +61,6 @@ app.post('/api/login', async (req, res) => {
 // ===================================================
 // INTEGRASI API DATA SURAT
 // ===================================================
-
 app.get('/api/surat-keluar-all', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM surat_keluar ORDER BY id DESC');
@@ -97,12 +94,12 @@ app.post('/api/update-status-surat-keluar', async (req, res) => {
   }
 });
 
-// Fallback routing menggunakan process.cwd() agar path file terbaca di Vercel
-app.get('*', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'public', 'login.html'));
+// Fallback khusus jika ada salah panggil API (Mencegah crash file system)
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint API tidak ditemukan' });
 });
 
-// Menjalankan Server secara kondisional (Hanya aktif jika dijalankan di komputer lokal)
+// Listener lokal (Hanya berjalan saat pengujian di komputer sendiri)
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
