@@ -2,14 +2,14 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const express = require('express');
 const { Pool } = require('pg');
-const path = require('path');
 const app = express();
 
-// 1. MIDDLEWARE WAJIB (Membaca JSON & Melayani Berkas Tampilan HTML/CSS/JS)
+// Middleware wajib untuk membaca request body berbentuk JSON
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. KONEKSI DATABASE (SUPABASE VIA TRANSACTION POOLER)
+// ===================================================
+// KONEKSI DATABASE (SUPABASE VIA TRANSACTION POOLER)
+// ===================================================
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -18,7 +18,9 @@ const db = new Pool({
   }
 });
 
-// 3. RUTE PROSES LOGIN (API)
+// ===================================================
+// RUTE PROSES LOGIN (MURNI DATA JSON)
+// ===================================================
 app.post('/api/login', async (req, res, next) => {
   const namaJabatan = req.body.username || req.body.jabatan;
   const kataSandi = req.body.password;
@@ -49,14 +51,16 @@ app.post('/api/login', async (req, res, next) => {
         return res.json({ success: false, message: `Jabatan '${namaJabatan}' tidak terdaftar di database!` });
       }
     } catch (err) {
-      next(err); // Diteruskan ke Global Error Handler agar tidak crash
+      next(err);
     }
   } else {
     return res.json({ success: false, message: 'Kata Sandi Salah!' });
   }
 });
 
-// 4. INTEGRASI API DATA SURAT
+// ===================================================
+// INTEGRASI API DATA SURAT
+// ===================================================
 app.get('/api/surat-keluar-all', async (req, res, next) => {
   try {
     const result = await db.query('SELECT * FROM surat_keluar ORDER BY id DESC');
@@ -90,12 +94,12 @@ app.post('/api/update-status-surat-keluar', async (req, res, next) => {
   }
 });
 
-// 5. FALLBACK ROUTE (Menyajikan halaman login.html jika rute tidak dikenal)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+// Fallback jika ada salah panggil endpoint API
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ success: false, message: 'Endpoint API tidak ditemukan.' });
 });
 
-// 6. GLOBAL ERROR HANDLER (Pengaman utama agar serverless Vercel tidak pernah mati/crash)
+// GLOBAL ERROR HANDLER (Pengaman utama backend)
 app.use((err, req, res, next) => {
   console.error('Sistem Error:', err.message);
   res.status(500).json({
