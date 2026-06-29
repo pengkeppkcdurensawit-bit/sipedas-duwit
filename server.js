@@ -1,27 +1,45 @@
 const express = require('express');
 const { Pool } = require('pg');
+const path = require('path');
 const app = express();
 
+// Middleware wajib untuk membaca JSON dan berkas statis
 app.use(express.json());
 app.use(express.static('public'));
 
-// ==========================================
-// RUTE PROSES LOGIN (TAMBAHKAN INI)
-// ==========================================
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body; // Mengambil input dari halaman login
+// ===================================================
+// KONEKSI DATABASE (Inisialisasi Terlebih Dahulu)
+// ===================================================
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-  // Verifikasi kata sandi standar puskesmas Anda
-  if (password === 'pusk2024') {
+// ===================================================
+// RUTE PROSES LOGIN (VERSI AMAN & ANTI-UNDEFINED)
+// ===================================================
+app.post('/api/login', async (req, res) => {
+  // Menangkap 'username' atau 'jabatan' dari frontend agar fleksibel dan tidak memicu 'undefined'
+  const namaJabatan = req.body.username || req.body.jabatan;
+  const kataSandi = req.body.password;
+
+  if (!namaJabatan) {
+    return res.json({ success: false, message: 'Pilihan jabatan tidak terbaca oleh sistem!' });
+  }
+
+  if (kataSandi === 'pusk2024') {
     try {
-      // Memeriksa apakah jabatan tersebut ada di tabel pegawai Supabase
-      const result = await db.query('SELECT * FROM pegawai WHERE jabatan = $1', [username]);
+      const result = await db.query('SELECT * FROM pegawai WHERE jabatan = $1', [namaJabatan]);
       
       if (result.rows.length > 0) {
-        // Jika cocok, kirim tanda sukses ke halaman login.html
-        return res.json({ success: true, role: result.rows[0].jabatan });
+        // Mengirimkan semua kemungkinan format variabel (role, jabatan, dll) agar cocok dengan login.html Anda
+        return res.json({ 
+          success: true, 
+          role: result.rows[0].jabatan,
+          jabatan: result.rows[0].jabatan 
+        });
       } else {
-        return res.json({ success: false, message: 'Jabatan tidak ditemukan di database!' });
+        return res.json({ success: false, message: `Jabatan '${namaJabatan}' tidak terdaftar di database!` });
       }
     } catch (err) {
       return res.status(500).json({ success: false, message: err.message });
@@ -31,34 +49,9 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Koneksi ke Supabase PostgreSQL
-const db = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// ==========================================
-// RUTE AUTHENTICATION LOGIN (Tambahkan Ini!)
-// ==========================================
-app.post('/api/login', async (req, res) => {
-  const { jabatan, password } = req.body;
-
-  // Sesuai dengan password standar puskesmas Anda
-  if (password === 'pusk2024') { 
-    try {
-      const result = await db.query('SELECT * FROM pegawai WHERE jabatan = $1', [jabatan]);
-      if (result.rows.length > 0) {
-        return res.json({ success: true, jabatan: result.rows[0].jabatan });
-      } else {
-        return res.status(404).json({ error: 'Jabatan tidak terdaftar di database' });
-      }
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  } else {
-    return res.status(401).json({ error: 'Kata Sandi Salah!' });
-  }
-});
+// ===================================================
+// INTEGRASI API DATA (SUPABASE)
+// ===================================================
 
 // 1. AMBIL SEMUA SURAT KELUAR (Untuk Dashboard)
 app.get('/api/surat-keluar-all', async (req, res) => {
@@ -122,21 +115,19 @@ app.get('/api/pegawai', async (req, res) => {
   }
 });
 
-// Tambahkan ini di bagian paling bawah server.js (sebelum module.exports = app)
-const path = require('path');
+// ===================================================
+// MANAJEMEN ROUTING HALAMAN HTML (Untuk Serverless Vercel)
+// ===================================================
 
-// Menangkap semua halaman HTML agar disajikan dengan benar oleh Express di Vercel
+// Menangkap semua request berakhiran .html agar diarahkan ke folder public
 app.get('/:page.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', `${req.params.page}.html`));
 });
 
-// Halaman utama otomatis mengarah ke login atau kasubbag
+// Halaman utama (/) otomatis menyajikan login.html sebagai gerbang pertama
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'kasubbag.html'));
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Vercel memerlukan 'module.exports'
-module.exports = app;
-
-// Vercel memerlukan 'module.exports'
+// Ekspor aplikasi agar dikenali oleh runtime Node.js Vercel
 module.exports = app;
