@@ -5,6 +5,32 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+// ==========================================
+// RUTE PROSES LOGIN (TAMBAHKAN INI)
+// ==========================================
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body; // Mengambil input dari halaman login
+
+  // Verifikasi kata sandi standar puskesmas Anda
+  if (password === 'pusk2024') {
+    try {
+      // Memeriksa apakah jabatan tersebut ada di tabel pegawai Supabase
+      const result = await db.query('SELECT * FROM pegawai WHERE jabatan = $1', [username]);
+      
+      if (result.rows.length > 0) {
+        // Jika cocok, kirim tanda sukses ke halaman login.html
+        return res.json({ success: true, role: result.rows[0].jabatan });
+      } else {
+        return res.json({ success: false, message: 'Jabatan tidak ditemukan di database!' });
+      }
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  } else {
+    return res.json({ success: false, message: 'Kata Sandi Salah!' });
+  }
+});
+
 // Koneksi ke Supabase PostgreSQL
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
