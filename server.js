@@ -1,7 +1,10 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 const app = express();
+// ... sisa kode di bawahnya biarkan saja seperti biasa
 
 // Middleware wajib untuk membaca JSON dan berkas statis
 app.use(express.json());
